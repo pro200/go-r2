@@ -79,7 +79,7 @@ func List(bucket, prefix string, length int, token ...string) (list []string, ne
 	return list, nextToken, nil
 }
 
-func Upload(bucket, path, key string, contentType ...string) error {
+func Upload(bucket, path, key string, forceType ...string) error {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -89,16 +89,17 @@ func Upload(bucket, path, key string, contentType ...string) error {
 		return errors.New("zero size file")
 	}
 
-	tp := utils.ContentType(path)
-	fmt.Println(tp)
-	//ct := "application/octet-stream"
+	contentType := utils.ContentType(path)
+	if len(forceType) > 0 {
+		contentType = forceType[0]
+	}
 
 	uploader := manager.NewUploader(s3Client)
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-		Body:   bytes.NewReader(file),
-		//ContentType: aws.String(contentType),
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(file),
+		ContentType: aws.String(contentType),
 	})
 
 	if err != nil {

@@ -11,20 +11,20 @@ import (
 func TestR2(t *testing.T) {
 	err := env.Init()
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	accountId, err := env.Get("ACCOUNT_ID")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	accessKeyId, err := env.Get("ACCESS_KEY_ID")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	secretAccessKey, err := env.Get("SECRET_ACCESS_KEY")
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	r2.Init(r2.Config{
@@ -37,7 +37,6 @@ func TestR2(t *testing.T) {
 	fmt.Println(r)
 
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
-
 }
