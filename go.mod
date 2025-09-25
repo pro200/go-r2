@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.12
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.1
+	github.com/pro200/go-env v1.0.5
 	github.com/pro200/go-utils v1.0.0
 )
 
@@ -26,5 +27,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.34.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.38.4 // indirect
 	github.com/aws/smithy-go v1.23.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/soellman/pidfile v0.0.0-20160225184504-d482c905736b // indirect
 )

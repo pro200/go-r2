@@ -7,47 +7,86 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config" // "config" 충돌 방지 위해 별칭 사용
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/pro200/go-utils"
 )
 
-var s3Client *s3.Client
-
 type Config struct {
+	Name            string // storage 이름 (기본값: "main")
 	AccountId       string
 	AccessKeyID     string
 	SecretAccessKey string
 }
 
-func Init(option Config) error {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(option.AccessKeyID, option.SecretAccessKey, "")),
-		config.WithRegion("auto"),
+type Storage struct {
+	client *s3.Client
+}
+
+var (
+	Storages = make(map[string]*Storage)
+	dbMu     sync.RWMutex // 동시성 안전 보장
+)
+
+func New(config Config) (*Storage, error) {
+	if config.Name == "" {
+		config.Name = "main"
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(),
+		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(config.AccessKeyID, config.SecretAccessKey, "")),
+		awsConfig.WithRegion("auto"),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", option.AccountId))
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(fmt.Sprintf("https://%s.r2.cloudflarestorage.com", config.AccountId))
 	})
 
-	return nil
+	storage := &Storage{client: client}
+
+	dbMu.Lock()
+	Storages[config.Name] = storage
+	dbMu.Unlock()
+
+	return storage, nil
 }
 
-func Info(bucket, key string) (*s3.HeadObjectOutput, error) {
-	return s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+func GetStorage(name ...string) (*Storage, error) {
+	dbMu.RLock()
+	defer dbMu.RUnlock()
+
+	if len(Storages) == 0 {
+		return nil, errors.New("no storages available")
+	}
+
+	stName := "main"
+	if len(name) > 0 {
+		stName = name[0]
+	}
+
+	db, ok := Storages[stName]
+	if !ok {
+		return nil, fmt.Errorf("storage %s not found", stName)
+	}
+	return db, nil
+}
+
+func (s *Storage) Info(bucket, key string) (*s3.HeadObjectOutput, error) {
+	return s.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 }
 
-func List(bucket, prefix string, length int, token ...string) (list []string, nextToken string, err error) {
+func (s *Storage) List(bucket, prefix string, length int, token ...string) (list []string, nextToken string, err error) {
 	// up to 1,000 keys
 	if length > 1000 {
 		length = 1000
@@ -65,8 +104,7 @@ func List(bucket, prefix string, length int, token ...string) (list []string, ne
 		options.ContinuationToken = aws.String(token[0])
 	}
 
-	output, err := s3Client.ListObjectsV2(context.TODO(), &options)
-
+	output, err := s.client.ListObjectsV2(context.TODO(), &options)
 	if err != nil {
 		return list, nextToken, err
 	}
@@ -79,7 +117,7 @@ func List(bucket, prefix string, length int, token ...string) (list []string, ne
 	return list, nextToken, nil
 }
 
-func Upload(bucket, path, key string, forceType ...string) error {
+func (s *Storage) Upload(bucket, path, key string, forceType ...string) error {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -94,33 +132,36 @@ func Upload(bucket, path, key string, forceType ...string) error {
 		contentType = forceType[0]
 	}
 
-	uploader := manager.NewUploader(s3Client)
+	uploader := manager.NewUploader(s.client)
 	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(bucket),
 		Key:         aws.String(key),
 		Body:        bytes.NewReader(file),
 		ContentType: aws.String(contentType),
 	})
-
 	if err != nil {
 		return err
 	}
 
 	// 업로드된 용량 비교
-	result, err := s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+	result, err := s.client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
+	if err != nil {
+		return err
+	}
 
-	if err != nil || len(file) != int(*result.ContentLength) {
+	// TODO: 업로드 실패한 파일을 삭제
+	if len(file) != int(*result.ContentLength) {
 		return errors.New("upload failed")
 	}
 
-	return err
+	return nil
 }
 
-func Delete(bucket, key string) error {
-	_, err := s3Client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
+func (s *Storage) Delete(bucket, key string) error {
+	_, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -128,7 +169,7 @@ func Delete(bucket, key string) error {
 	return err
 }
 
-func Download(bucket, key, targetPath string) error {
+func (s *Storage) Download(bucket, key, targetPath string) error {
 	// Set up the local file
 	fd, err := os.Create(targetPath)
 	if err != nil {
@@ -136,7 +177,7 @@ func Download(bucket, key, targetPath string) error {
 	}
 	defer fd.Close()
 
-	downloader := manager.NewDownloader(s3Client)
+	downloader := manager.NewDownloader(s.client)
 	_, err = downloader.Download(context.TODO(), fd,
 		&s3.GetObjectInput{
 			Bucket: aws.String(bucket),

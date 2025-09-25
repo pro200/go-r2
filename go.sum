@@ -36,6 +36,10 @@ github.com/aws/aws-sdk-go-v2/service/sts v1.38.4 h1:PR00NXRYgY4FWHqOGx3fC3lhVKjs
 github.com/aws/aws-sdk-go-v2/service/sts v1.38.4/go.mod h1:Z+Gd23v97pX9zK97+tX4ppAgqCt3Z2dIXB02CtBncK8=
 github.com/aws/smithy-go v1.23.0 h1:8n6I3gXzWJB2DxBDnfxgBaSX6oe0d/t10qGz7OKqMCE=
 github.com/aws/smithy-go v1.23.0/go.mod h1:t1ufH5HMublsJYulve2RKmHDC15xu1f26kHCp/HgceI=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/pro200/go-env v1.0.5 h1:44nSiRu2ODP0YsslBEKjfkbZPgyhJcKG989DWW32E/s=
+github.com/pro200/go-env v1.0.5/go.mod h1:6cjGKKRUsyJ+3yucVT9upatGScddURTjU31NdMzkQnY=
 github.com/pro200/go-utils v1.0.0 h1:gWTraYgj8UuMHLJgQ+3aL5UU9wkyMCVBPYy7cSh3oXA=
 github.com/pro200/go-utils v1.0.0/go.mod h1:BYd2+OjudTUzwQ+V0By0Jp9vsjT5iDgQpTYzT5Zxi6c=
 github.com/soellman/pidfile v0.0.0-20160225184504-d482c905736b h1:iIk2ziBApy8Qf6KuoKoVqFOYCmQICxsrRNyry/IQH1k=
